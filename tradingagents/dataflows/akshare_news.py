@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import pandas as pd
 from .akshare_stock import _is_a_share, _add_a_share_suffix
+from .retry import with_retry
 
 
 def _format_news_items(df: pd.DataFrame, limit: int) -> str:
@@ -31,7 +32,7 @@ def get_news(ticker: str, start_date: str, end_date: str) -> str:
         if _is_a_share(ticker):
             import akshare as ak
             numeric = ticker[:6]
-            df = ak.stock_news_em(symbol=numeric)
+            df = with_retry(lambda: ak.stock_news_em(symbol=numeric), name="stock_news_em")
             if df is not None and not df.empty:
                 if "发布时间" in df.columns:
                     df["发布时间"] = pd.to_datetime(df["发布时间"], errors="coerce")
@@ -78,7 +79,7 @@ def get_global_news(curr_date: str, look_back_days: int = 7, limit: int = 50) ->
     """Get global financial news via akshare."""
     try:
         import akshare as ak
-        df = ak.stock_info_global_em()
+        df = with_retry(lambda: ak.stock_info_global_em(), name="stock_info_global_em")
         if df is None or df.empty:
             return "No global news available at this time."
 
@@ -101,7 +102,7 @@ def get_insider_transactions(symbol: str) -> str:
         if _is_a_share(symbol):
             import akshare as ak
             numeric = symbol[:6]
-            df = ak.stock_inner_trade_xq(symbol=numeric)
+            df = with_retry(lambda: ak.stock_inner_trade_xq(symbol=numeric), name="stock_inner_trade_xq")
             if df is None or df.empty:
                 return f"No insider transactions data found for symbol '{symbol}'"
             csv_str = df.to_csv()

@@ -2,6 +2,7 @@
 from datetime import datetime
 import pandas as pd
 from .akshare_stock import _is_a_share, _add_a_share_suffix
+from .retry import with_retry
 
 
 # ── helpers ────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ def _get_a_share_company_info(symbol: str) -> dict:
 
     info = {}
     try:
-        raw = ak.stock_individual_info_em(symbol=symbol)
+        raw = with_retry(lambda: ak.stock_individual_info_em(symbol=symbol), name="stock_individual_info_em")
         if raw is not None and not raw.empty:
             for _, row in raw.iterrows():
                 key = str(row.get("item", ""))
@@ -24,7 +25,7 @@ def _get_a_share_company_info(symbol: str) -> dict:
         pass
 
     try:
-        indicators = ak.stock_financial_analysis_indicator(symbol=symbol)
+        indicators = with_retry(lambda: ak.stock_financial_analysis_indicator(symbol=symbol), name="stock_financial_analysis_indicator")
         if indicators is not None and not indicators.empty:
             latest = indicators.iloc[-1]
             for col in indicators.columns:
@@ -43,7 +44,7 @@ def _get_us_company_info(symbol: str) -> dict:
 
     info = {}
     try:
-        spot = ak.stock_us_spot_em()
+        spot = with_retry(lambda: ak.stock_us_spot_em(), name="stock_us_spot_em")
         row = spot[spot["代码"] == symbol.upper()]
         if not row.empty:
             r = row.iloc[0]
@@ -54,7 +55,7 @@ def _get_us_company_info(symbol: str) -> dict:
         pass
 
     try:
-        basic = ak.stock_individual_basic_info_us_xq(symbol=symbol.upper())
+        basic = with_retry(lambda: ak.stock_individual_basic_info_us_xq(symbol=symbol.upper()), name="stock_individual_basic_info_us_xq")
         if basic is not None and not basic.empty:
             for _, r in basic.iterrows():
                 k = str(r.get("item", ""))
@@ -65,7 +66,7 @@ def _get_us_company_info(symbol: str) -> dict:
         pass
 
     try:
-        fin = ak.stock_financial_us_analysis_indicator_em(symbol=symbol.upper(), indicator="年报")
+        fin = with_retry(lambda: ak.stock_financial_us_analysis_indicator_em(symbol=symbol.upper(), indicator="年报"), name="stock_financial_us_analysis_indicator_em")
         if fin is not None and not fin.empty:
             latest = fin.iloc[-1]
             for col in fin.columns:
@@ -123,10 +124,10 @@ def get_balance_sheet(
         if _is_a_share(ticker):
             api_sym = _add_a_share_suffix(ticker)
             import akshare as ak
-            df = ak.stock_balance_sheet_by_report_em(symbol=api_sym)
+            df = with_retry(lambda: ak.stock_balance_sheet_by_report_em(symbol=api_sym), name="stock_balance_sheet_by_report_em")
         else:
             import akshare as ak
-            df = ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="资产负债表", indicator="年报")
+            df = with_retry(lambda: ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="资产负债表", indicator="年报"), name="stock_financial_us_report_em(bs)")
 
         if df is None or df.empty:
             return f"No balance sheet data found for symbol '{ticker}'"
@@ -152,10 +153,10 @@ def get_income_statement(
         if _is_a_share(ticker):
             api_sym = _add_a_share_suffix(ticker)
             import akshare as ak
-            df = ak.stock_profit_sheet_by_report_em(symbol=api_sym)
+            df = with_retry(lambda: ak.stock_profit_sheet_by_report_em(symbol=api_sym), name="stock_profit_sheet_by_report_em")
         else:
             import akshare as ak
-            df = ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="综合损益表", indicator="年报")
+            df = with_retry(lambda: ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="综合损益表", indicator="年报"), name="stock_financial_us_report_em(is)")
 
         if df is None or df.empty:
             return f"No income statement data found for symbol '{ticker}'"
@@ -181,10 +182,10 @@ def get_cashflow(
         if _is_a_share(ticker):
             api_sym = _add_a_share_suffix(ticker)
             import akshare as ak
-            df = ak.stock_cash_flow_sheet_by_report_em(symbol=api_sym)
+            df = with_retry(lambda: ak.stock_cash_flow_sheet_by_report_em(symbol=api_sym), name="stock_cash_flow_sheet_by_report_em")
         else:
             import akshare as ak
-            df = ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="现金流量表", indicator="年报")
+            df = with_retry(lambda: ak.stock_financial_us_report_em(stock=ticker.upper(), symbol="现金流量表", indicator="年报"), name="stock_financial_us_report_em(cf)")
 
         if df is None or df.empty:
             return f"No cash flow data found for symbol '{ticker}'"

@@ -2,6 +2,7 @@
 import re
 from datetime import datetime
 import pandas as pd
+from .retry import with_retry
 
 
 def _is_a_share(symbol: str) -> bool:
@@ -28,12 +29,15 @@ def _fetch_ohlcv_a_share(
     """Fetch A-share daily OHLCV via akshare."""
     import akshare as ak
 
-    df = ak.stock_zh_a_hist(
-        symbol=symbol,
-        period="daily",
-        start_date=start_date,
-        end_date=end_date,
-        adjust="qfq",
+    df = with_retry(
+        lambda: ak.stock_zh_a_hist(
+            symbol=symbol,
+            period="daily",
+            start_date=start_date,
+            end_date=end_date,
+            adjust="qfq",
+        ),
+        name="stock_zh_a_hist",
     )
     if df is None or df.empty:
         return pd.DataFrame()
@@ -60,12 +64,15 @@ def _fetch_ohlcv_us(
     """Fetch US stock daily OHLCV via akshare."""
     import akshare as ak
 
-    df = ak.stock_us_hist(
-        symbol=symbol.upper(),
-        period="daily",
-        start_date=start_date,
-        end_date=end_date,
-        adjust="qfq",
+    df = with_retry(
+        lambda: ak.stock_us_hist(
+            symbol=symbol.upper(),
+            period="daily",
+            start_date=start_date,
+            end_date=end_date,
+            adjust="qfq",
+        ),
+        name="stock_us_hist",
     )
     if df is None or df.empty:
         return pd.DataFrame()
