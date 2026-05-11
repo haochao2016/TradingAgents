@@ -6,13 +6,14 @@ from .retry import with_retry
 
 
 def _is_a_share(symbol: str) -> bool:
-    """Return True when ``symbol`` looks like a 6-digit A-share code."""
-    return bool(re.fullmatch(r"\d{6}", symbol))
+    """Return True when ``symbol`` looks like a 6-digit A-share code, with or without suffix."""
+    raw = symbol.split(".")[0]
+    return bool(re.fullmatch(r"\d{6}", raw))
 
 
 def _add_a_share_suffix(symbol: str) -> str:
-    """Append exchange suffix to a 6-digit A-share code."""
-    code = symbol[:6]
+    """Append exchange suffix to a 6-digit A-share code (strips existing suffix first)."""
+    code = symbol.split(".")[0][:6]
     prefix = code[0]
     if prefix in ("0", "3"):
         return f"{code}.SZ"

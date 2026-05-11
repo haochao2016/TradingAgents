@@ -37,11 +37,17 @@ DEFAULT_CONFIG = {
     "max_recur_limit": 100,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
+    # Tushare API token (required when tushare is the configured vendor)
+    "tushare_token": os.getenv("TUSHARE_TOKEN", ""),
+    # Default vendor: set in .env DEFAULT_VENDOR. "tushare" or "akshare".
+    "default_vendor": os.getenv("DEFAULT_VENDOR", "tushare"),
+    # Data vendor configuration
+    # Category-level configuration (default for all tools in category)
     "data_vendors": {
-        "core_stock_apis": "akshare",       # Options: akshare, yfinance, alpha_vantage
-        "technical_indicators": "akshare",  # Options: akshare, yfinance, alpha_vantage
-        "fundamental_data": "akshare",      # Options: akshare, yfinance, alpha_vantage
-        "news_data": "akshare",             # Options: akshare, yfinance, alpha_vantage
+        "core_stock_apis": os.getenv("DEFAULT_VENDOR", "tushare") + ",akshare",
+        "technical_indicators": os.getenv("DEFAULT_VENDOR", "tushare") + ",akshare",
+        "fundamental_data": os.getenv("DEFAULT_VENDOR", "tushare") + ",akshare",
+        "news_data": "akshare",                     # News always uses akshare
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {

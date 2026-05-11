@@ -1,0 +1,3 @@
+Based on the comprehensive investment plan analysis for **688981.SH**, the current price of ~122 yuan is assessed as offering poor risk-reward due to technical stagnation, structural earnings vulnerability, and excessive valuation. The plan explicitly recommends **Underweight** and tactical execution of **reducing exposure** on strength, with a clear warning against buying until the stock breaks and holds above 125 yuan with volume. Therefore, the specific recommendation is to **Sell** or reduce holdings immediately. No buy or hold action is justified under current conditions.
+
+**Recommendation: Sell** (reduce positions in `688981.SH`).
