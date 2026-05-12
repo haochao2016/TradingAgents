@@ -1,5 +1,11 @@
 import os
 
+from dotenv import find_dotenv, load_dotenv
+
+# Load .env so that env vars (TUSHARE_TOKEN, DEFAULT_VENDOR, etc.)
+# are available regardless of how the project is started.
+load_dotenv(find_dotenv(usecwd=True), override=False)
+
 _TRADINGAGENTS_HOME = os.path.join(os.path.expanduser("~"), ".tradingagents")
 
 DEFAULT_CONFIG = {
