@@ -24,27 +24,27 @@ class AKShareSource(BaseDataSource):
         return with_retry(
             lambda: ak.stock_zh_a_hist(symbol=api_sym, period="daily", start_date=start_date, end_date=end_date, adjust="qfq"),
             name="stock_zh_a_hist",
-        ).rename(columns={"日期": "Date", "开盘": "Open", "收盘": "Close", "最高": "High", "最低": "Low", "成交量": "Volume", "成交额": "Amount"})
+        ).rename(columns={"日期": "Date", "开盘": "open", "收盘": "close", "最高": "high", "最低": "low", "成交量": "volume", "成交额": "amount"})
 
     def _fetch_ohlcv_us(self, symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
         import akshare as ak
         return with_retry(
             lambda: ak.stock_us_hist(symbol=symbol.upper(), period="daily", start_date=start_date, end_date=end_date, adjust="qfq"),
             name="stock_us_hist",
-        ).rename(columns={"日期": "Date", "开盘": "Open", "收盘": "Close", "最高": "High", "最低": "Low", "成交量": "Volume", "成交额": "Amount"})
+        ).rename(columns={"日期": "Date", "开盘": "open", "收盘": "close", "最高": "high", "最低": "low", "成交量": "volume", "成交额": "amount"})
 
     def _format_ohlcv(self, df: pd.DataFrame, symbol: str, start_date: str, end_date: str) -> str:
         if df.empty:
             return f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
-        cols = ["Date", "Open", "High", "Low", "Close", "Volume"]
+        cols = ["Date", "open", "high", "low", "close", "volume"]
         available = [c for c in cols if c in df.columns]
         out = df[available].copy()
         if "Date" in out.columns:
             out["Date"] = pd.to_datetime(out["Date"]).dt.strftime("%Y-%m-%d")
         out = out.sort_values("Date")
-        if "Close" in out.columns:
-            out["Adj Close"] = out["Close"]
-        for c in ["Open", "High", "Low", "Close", "Adj Close"]:
+        if "close" in out.columns:
+            out["adj_close"] = out["close"]
+        for c in ["open", "high", "low", "close", "adj_close"]:
             if c in out.columns:
                 out[c] = out[c].round(2)
         header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n# Total records: {len(out)}\n# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -61,7 +61,7 @@ class AKShareSource(BaseDataSource):
                 df = self._fetch_ohlcv_a(api_sym, start_fmt, end_fmt)
             else:
                 df = self._fetch_ohlcv_us(symbol.upper(), start_fmt, end_fmt)
-            if not df.empty and "Close" in df.columns:
+            if not df.empty and "close" in df.columns:
                 self.cache.save_ohlcv(symbol, df)
             return self._format_ohlcv(df, symbol, start_date, end_date)
         except Exception as e:
@@ -196,11 +196,11 @@ class AKShareSource(BaseDataSource):
             if df is None or df.empty:
                 return f"Error retrieving indicator data: no OHLCV for {symbol}"
             df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-            df = df.dropna(subset=["Date", "Close"])
-            for c in ["Open", "High", "Low", "Close", "Volume"]:
+            df = df.dropna(subset=["Date", "close"])
+            for c in ["open", "high", "low", "close", "volume"]:
                 if c in df.columns:
                     df[c] = pd.to_numeric(df[c], errors="coerce")
-            df = df.dropna(subset=["Close"]).ffill().bfill()
+            df = df.dropna(subset=["close"]).ffill().bfill()
             df = df[df["Date"] <= curr_dt]
             stock = wrap(df)
             stock["Date"] = stock["Date"].dt.strftime("%Y-%m-%d")
@@ -287,7 +287,9 @@ class AKShareSource(BaseDataSource):
             if is_a_share(symbol):
                 import akshare as ak
                 numeric = symbol.split(".")[0][:6]
-                df = with_retry(lambda: ak.stock_inner_trade_xq(symbol=numeric), name="stock_inner_trade_xq")
+                df = with_retry(lambda: ak.stock_inner_trade_xq(), name="stock_inner_trade_xq")
+                if df is not None and not df.empty and "股票代码" in df.columns:
+                    df = df[df["股票代码"] == numeric]
                 if df is None or df.empty:
                     return f"No insider transactions data found for symbol '{symbol}'"
                 header = f"# Insider Transactions data for {symbol.upper()}\n# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"

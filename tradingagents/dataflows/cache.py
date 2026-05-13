@@ -50,8 +50,11 @@ class DataCache:
                 conn,
                 params=(symbol, start_date, end_date),
             )
-        if not df.empty and "symbol" in df.columns:
-            df = df.drop(columns=["symbol"])
+        if not df.empty:
+            if "symbol" in df.columns:
+                df = df.drop(columns=["symbol"])
+            if "trade_date" in df.columns:
+                df = df.rename(columns={"trade_date": "Date"})
         return df
 
     def ohlcv_range(self, symbol: str):
@@ -76,13 +79,13 @@ class DataCache:
                     (
                         symbol,
                         str(row.get("Date", "")),
-                        row.get("Open"),
-                        row.get("High"),
-                        row.get("Low"),
-                        row.get("Close"),
-                        row.get("Adj Close"),
-                        row.get("Volume"),
-                        row.get("Amount"),
+                        row.get("open"),
+                        row.get("high"),
+                        row.get("low"),
+                        row.get("close"),
+                        row.get("adj_close"),
+                        row.get("volume"),
+                        row.get("amount"),
                     ),
                 )
 

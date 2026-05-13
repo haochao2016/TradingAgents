@@ -39,25 +39,35 @@ class TushareSource(BaseDataSource):
         start_fmt = start_date.replace("-", "")
         end_fmt = end_date.replace("-", "")
 
-        # Check cache first
+        # Check if cache fully covers requested range
         cached = self.cache.load_ohlcv(api_sym, start_date, end_date)
         if not cached.empty:
-            return cached
+            cached_dates = pd.to_datetime(cached["Date"])
+            req_start = pd.to_datetime(start_date)
+            req_end = pd.to_datetime(end_date)
+            if cached_dates.min() <= req_start and cached_dates.max() >= req_end:
+                return cached
 
+        # Cache insufficient — fetch full requested range from tushare
         pro = self._pro_api()
         df = with_retry(
             lambda: pro.daily(ts_code=api_sym, start_date=start_fmt, end_date=end_fmt),
             name=f"pro.daily({api_sym})",
         )
         if df is None or df.empty:
-            return pd.DataFrame()
+            return cached if not cached.empty else pd.DataFrame()
 
         df = df.rename(columns={
-            "trade_date": "Date", "open": "Open", "high": "High",
-            "low": "Low", "close": "Close", "vol": "Volume", "amount": "Amount",
+            "trade_date": "Date",
+            "open": "open", "high": "high", "low": "low",
+            "close": "close", "vol": "volume", "amount": "amount",
         })
-        if "Close" in df.columns:
-            df["Adj Close"] = df["Close"]
+        if "close" in df.columns:
+            df["adj_close"] = df["close"]
+
+        # Merge with cache and deduplicate
+        if not cached.empty:
+            df = pd.concat([cached, df]).drop_duplicates(subset=["Date"]).sort_values("Date")
 
         self.cache.save_ohlcv(api_sym, df)
         return df
@@ -65,15 +75,15 @@ class TushareSource(BaseDataSource):
     def _format_ohlcv(self, df: pd.DataFrame, symbol: str, start_date: str, end_date: str) -> str:
         if df.empty:
             return f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
-        cols = ["Date", "Open", "High", "Low", "Close", "Volume"]
+        cols = ["Date", "open", "high", "low", "close", "volume"]
         available = [c for c in cols if c in df.columns]
         out = df[available].copy()
         if "Date" in out.columns:
             out["Date"] = pd.to_datetime(out["Date"]).dt.strftime("%Y-%m-%d")
         out = out.sort_values("Date")
-        if "Close" in out.columns:
-            out["Adj Close"] = out["Close"]
-        for c in ["Open", "High", "Low", "Close", "Adj Close"]:
+        if "close" in out.columns:
+            out["adj_close"] = out["close"]
+        for c in ["open", "high", "low", "close", "adj_close"]:
             if c in out.columns:
                 out[c] = out[c].round(2)
         header = (
@@ -151,12 +161,14 @@ class TushareSource(BaseDataSource):
         before = curr_date_dt - relativedelta(days=look_back_days)
         api_sym = add_a_share_suffix(symbol)
         df = self._fetch_ohlcv(api_sym, before.strftime("%Y-%m-%d"), curr_date)
+        if df is None or df.empty or "Date" not in df.columns:
+            raise ValueError(f"No OHLCV data available for {api_sym} in date range")
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-        df = df.dropna(subset=["Date", "Close"])
-        for c in ["Open", "High", "Low", "Close", "Volume"]:
+        df = df.dropna(subset=["Date", "close"])
+        for c in ["open", "high", "low", "close", "volume"]:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors="coerce")
-        df = df.dropna(subset=["Close"]).ffill().bfill()
+        df = df.dropna(subset=["close"]).ffill().bfill()
         df = df[df["Date"] <= curr_date_dt]
         stock = wrap(df)
         stock["Date"] = stock["Date"].dt.strftime("%Y-%m-%d")
