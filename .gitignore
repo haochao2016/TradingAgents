@@ -219,3 +219,5 @@ __marimo__/
 
 # Cache
 **/data_cache/
+data/tushare_cache/tushare.db
+reports/*
